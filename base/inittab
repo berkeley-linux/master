@@ -1,0 +1,11 @@
+# TO: /etc/inittab
+id:3:initdefault
+si::sysinit:/etc/rc.sysinit
+l0:0:wait:/etc/rc 0
+l1:1:wait:/etc/rc 1
+l2:2:wait:/etc/rc 2
+l3:3:wait:/etc/rc 3
+l4:4:wait:/etc/rc 4
+l5:5:wait:/etc/rc 5
+l6:6:wait:/etc/rc 6
+ca::ctrlaltdel:/sbin/shutdown -t1 -a -r now
