@@ -1,0 +1,7 @@
+#!/bin/sh
+# TO: ../initrd/loadmod
+/bin/echo "Loading modules"
+/bin/find /sys -name "modalias" | while read a; do
+	/bin/modprobe `/bin/cat $a` > /dev/null 2>&1
+done
+/bin/modprobe uas

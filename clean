@@ -1,5 +1,5 @@
 #!/bin/sh
-doas rm -rf dist tarball root
+doas rm -rf dist tarball root initrd
 for i in heritage musl-fts sysvinit pdksh vi; do
 	cd $i
 	make distclean

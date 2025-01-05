@@ -9,3 +9,9 @@ l4:4:wait:/etc/rc 4
 l5:5:wait:/etc/rc 5
 l6:6:wait:/etc/rc 6
 ca::ctrlaltdel:/sbin/shutdown -t1 -a -r now
+g1:23:respawn:/sbin/getty -J tty1 38400 linux
+g2:23:respawn:/sbin/getty -J tty2 38400 linux
+g3:23:respawn:/sbin/getty -J tty3 38400 linux
+g4:23:respawn:/sbin/getty -J tty4 38400 linux
+g5:23:respawn:/sbin/getty -J tty5 38400 linux
+g6:23:respawn:/sbin/getty -J tty6 38400 linux

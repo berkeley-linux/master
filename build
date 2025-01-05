@@ -9,12 +9,26 @@ fi
 if [ ! -d dist ]; then
 	mkdir -p dist
 fi
-if [ true -o ! -d root ]; then
-	doas mkdir -p root/usr
+if [ ! -d initrd ]; then
+	doas mkdir -p initrd/proc
+	doas mkdir -p initrd/sys
+	doas mkdir -p initrd/tmp
+	doas mkdir -p initrd/dev
+	doas mkdir -p initrd/newroot
+	doas mkdir -p initrd/bin
+	doas mkdir -p initrd/lib
+	doas mkdir -p initrd/isolinux
+fi
+if [ ! -d root ]; then
+	doas mkdir -p root/usr/share
+	doas mkdir -p root/usr/man
 	doas mkdir -p root/lib64
 	doas mkdir -p root/bin
 	doas mkdir -p root/tmp
 	doas mkdir -p root/var
+
+	doas ln -s ../man root/usr/share/man
+
 	doas ln -s ./ksh root/bin/sh
 	doas ln -s ./sbin root/usr/bin
 	doas ln -s ../bin root/usr/sbin
@@ -81,7 +95,7 @@ set_cc () {
 	export CXX
 	export AS
 	export LD
-	CFLAGS="--sysroot=$SRCROOT/root -O2"
+	CFLAGS="--sysroot=$SRCROOT/root -O2 -Wl,--sysroot=$SRCROOT/root"
 	CXXFLAGS="--sysroot=$SRCROOT/root -O2"
 	LDFLAGS="--sysroot=$SRCROOT/root -O2"
 	export CFLAGS
@@ -105,7 +119,17 @@ build () {
 			echo " - not configuring"
 		else
 			echo " - configuring"
-			./configure --prefix=/usr --sysconfdir=/etc --mandir=/usr/man $4 || exit 1
+			case "$1" in
+				dist/zlib-*)
+					./configure --prefix=/usr $4 || exit 1
+					;;
+				dist/util-linux-*)
+					./configure --prefix=/usr/linux --sysconfdir=/etc --mandir=/usr/man $4 || exit 1
+					;;
+				*)
+					./configure --prefix=/usr --sysconfdir=/etc --mandir=/usr/man $4 || exit 1
+					;;
+			esac
 			touch .configured
 		fi
 	fi
@@ -125,16 +149,54 @@ build () {
 	fi
 	leave
 }
+SLACKWARE_ROOT="http://mirror.slackware.jp/slackware"
+LINUX_VER=`wget -O - "$SLACKWARE_ROOT/slackware64-current/kernels/VERSIONS.TXT" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+'`
+echo " - Linux $LINUX_VER"
+
+download $SLACKWARE_ROOT/slackware64-current/source/k/linux-$LINUX_VER.tar.xz linux-$LINUX_VER
+if [ ! -d root/usr/include/linux ]; then
+	enter dist/linux-$LINUX_VER
+	doas make headers_install ARCH=x86_64 INSTALL_HDR_PATH=$SRCROOT/root/usr
+	leave
+fi
+if [ ! -f root/bzImage ]; then
+	doas wget $SLACKWARE_ROOT/slackware64-current/kernels/generic.s/bzImage -O root/bzImage
+fi
+
+if [ ! -f dist/kernel-$LINUX_VER.txz ]; then
+	wget $SLACKWARE_ROOT/slackware64-current/slackware64/a/kernel-generic-$LINUX_VER-x86_64-1.txz -O dist/kernel-$LINUX_VER.txz
+fi
+if [ ! -d root/lib/modules ]; then
+	doas tar xkvf dist/kernel-$LINUX_VER.txz -C root/usr lib
+fi
 
 download http://musl.cc/x86_64-linux-musl-cross.tgz x86_64-linux-musl-cross
 download http://git.musl-libc.org/cgit/musl/snapshot/musl-1.2.5.tar.gz musl-1.2.5
-download https://invisible-island.net/archives/ncurses/ncurses-6.5.tar.gz ncurses-6.5
+download http://invisible-island.net/archives/ncurses/ncurses-6.5.tar.gz ncurses-6.5
+download https://mandoc.bsd.lv/snapshots/mandoc-1.14.6.tar.gz mandoc-1.14.6
+download http://www.zlib.net/zlib-1.3.1.tar.gz zlib-1.3.1
+download https://ftp.gnu.org/gnu/less/less-668.tar.gz less-668
+download https://www.kernel.org/pub/linux/utils/util-linux/v2.40/util-linux-2.40.tar.gz util-linux-2.40
+download https://github.com/sqlite/sqlite/archive/refs/tags/version-3.47.0.tar.gz sqlite-version-3.47.0
+download https://mirrors.edge.kernel.org/pub/linux/utils/kernel/kmod/kmod-33.tar.gz kmod-33
+
+trap "exit 1 " 2
 
 set_cc
 
 cp source/sbrk.c dist/musl-1.2.5/src/linux/
 build dist/musl-1.2.5 DESTDIR
 build musl-fts DESTDIR
+
+build dist/zlib-1.3.1 DESTDIR "" "--enable-shared"
+
+echo "PREFIX=/usr" > dist/mandoc-1.14.6/configure.local
+echo "CC=$CC" >> dist/mandoc-1.14.6/configure.local
+echo "LD=$LD" >> dist/mandoc-1.14.6/configure.local
+echo "CFLAGS=\"$CFLAGS\"" >> dist/mandoc-1.14.6/configure.local
+echo "LDFLAGS=\"$LDFLAGS\"" >> dist/mandoc-1.14.6/configure.local
+build dist/mandoc-1.14.6 DESTDIR
+
 LD_LIBRARY_PATH=$SRCROOT/root/usr/lib
 export LD_LIBRARY_PATH
 build dist/ncurses-6.5 DESTDIR "" "--with-shared --with-termlib --enable-symlinks --disable-widec"
@@ -148,8 +210,87 @@ build sysvinit ROOT "mandir=/usr/man"
 build pdksh DESTDIR "prefix=$SRCROOT/root/usr"
 build vi DESTDIR "MANDIR=/usr/man"
 
+build dist/less-668 DESTDIR
+
+build dist/sqlite-version-3.47.0 DESTDIR "" "--disable-tcl --disable-readline"
+
+build dist/util-linux-2.40 DESTDIR "" "--without-systemd --without-python --without-ncursesw"
+
+build dist/kmod-33 DESTDIR
+
+if [ ! -f root/sbin/popdev ]; then
+	echo " - compiling popdev"
+	doas $CC $CFLAGS $LDFLAGS -o root/sbin/popdev source/popdev.c
+else
+	echo " - not compiling popdev"
+fi
+
+if [ ! -f root/sbin/irinit ]; then
+	echo " - compiling irinit"
+	doas $CC $CFLAGS $LDFLAGS -I$SRCROOT/root/usr/linux/include -L$SRCROOT/root/usr/linux/lib -o root/sbin/irinit source/irinit.c $SRCROOT/root/usr/linux/lib/libblkid.a
+else
+	echo " - not compiling irinit"
+fi
+
 echo " - copying files"
 for i in `ls -d base/*`; do
 	TO=`grep "TO: " $i | sed "s/# TO: //g"`
+	echo " - $i -> $TO"
 	doas cp $i $SRCROOT/root/$TO
 done
+
+doas chroot root makewhatis /usr/man
+
+echo " - constructing initrd.gz"
+if [ ! -f root/initrd.gz ]; then
+	doas cp root/bin/sh initrd/bin/sh
+	doas cp root/bin/echo initrd/bin/echo
+	doas cp root/bin/find initrd/bin/find
+	doas cp root/bin/cat initrd/bin/cat
+	doas cp root/bin/modprobe initrd/bin/modprobe
+	doas cp root/sbin/irinit initrd/init
+	doas cp root/sbin/popdev initrd/popdev
+	doas cp root/lib/libc.so initrd/lib/libc.so
+	doas cp root/lib/libc.so initrd/lib/ld-musl-x86_64.so.1
+	doas cp root/lib/libfts.so initrd/lib/libfts.so
+	doas cp root/lib/libfts.so initrd/lib/libfts.so.0
+	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/drivers/usb
+	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/drivers/scsi
+	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/fs
+	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/lib
+	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/arch
+	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/crypto
+	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/block
+	doas cp -rf root/lib/modules/$LINUX_VER/modules.* initrd/lib/modules/$LINUX_VER/
+	doas cp -rf root/lib/modules/$LINUX_VER/kernel/drivers/scsi/* initrd/lib/modules/$LINUX_VER/kernel/drivers/scsi/
+	doas cp -rf root/lib/modules/$LINUX_VER/kernel/drivers/usb/* initrd/lib/modules/$LINUX_VER/kernel/drivers/usb/
+	doas cp -rf root/lib/modules/$LINUX_VER/kernel/fs/* initrd/lib/modules/$LINUX_VER/kernel/fs/
+	doas cp -rf root/lib/modules/$LINUX_VER/kernel/lib/* initrd/lib/modules/$LINUX_VER/kernel/lib/
+	doas cp -rf root/lib/modules/$LINUX_VER/kernel/arch/* initrd/lib/modules/$LINUX_VER/kernel/arch/
+	doas cp -rf root/lib/modules/$LINUX_VER/kernel/block/* initrd/lib/modules/$LINUX_VER/kernel/block/
+	doas cp -rf root/lib/modules/$LINUX_VER/kernel/crypto/* initrd/lib/modules/$LINUX_VER/kernel/crypto/
+	cd initrd
+	find . | cpio -o -H newc > ../init.rd
+	cd ..
+	gzip -c init.rd > initrd.gz
+	doas mv initrd.gz root/initrd.gz
+fi
+
+doas cp /usr/lib/ISOLINUX/isolinux.bin root/isolinux/
+doas cp /usr/lib/syslinux/modules/bios/ldlinux.c32 root/isolinux/
+doas cp /usr/lib/syslinux/modules/bios/libutil.c32 root/isolinux/
+doas cp /usr/lib/syslinux/modules/bios/menu.c32 root/isolinux/
+
+cat > isolinux.cfg << EOF
+default menu.c32
+timeout 50
+menu title Boot Menu
+menu rows 1
+label linux
+       kernel /bzImage
+       initrd /initrd.gz
+       append root=LABEL=BLNXINST rootfstype=iso9660 loglevel=4 installer
+EOF
+doas mv isolinux.cfg root/isolinux/isolinux.cfg
+
+xorriso -as mkisofs -V "BLNXINST" -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -b isolinux/isolinux.bin -no-emul-boot -boot-load-size 4 -o output.iso root
