@@ -1,0 +1,3 @@
+[submodule "heritage"]
+	path = heritage
+	url = https://github.com/berkeley-linux/heritage
