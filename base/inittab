@@ -1,5 +1,5 @@
 # TO: /etc/inittab
-id:3:initdefault
+id:3:initdefault:
 si::sysinit:/etc/rc.sysinit
 l0:0:wait:/etc/rc 0
 l1:1:wait:/etc/rc 1

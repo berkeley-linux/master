@@ -142,7 +142,7 @@ build heritage DESTDIR
 build sysvinit ROOT "mandir=/usr/man"
 
 build pdksh DESTDIR "prefix=$SRCROOT/root/usr"
-build vi DESTDIR
+build vi DESTDIR "MANDIR=/usr/man"
 
 echo " - copying files"
 for i in `ls -d base/*`; do
