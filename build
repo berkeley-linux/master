@@ -1,0 +1,38 @@
+#!/bin/sh
+if [ ! -d tarball ]; then
+	mkdir -p tarball
+fi
+if [ ! -d dist ]; then
+	mkdir -p dist
+fi
+abort_tarball () {
+	echo
+	echo " - aborted"
+	rm -f tarball/$name
+	exit 1
+}
+abort_extract () {
+	echo
+	echo " - aborted"
+	rm -rf dist/$topdir
+	exit 1
+}
+download () {
+	trap abort_tarball 2
+	name=`echo "$1" | rev | cut -d"/" -f1 | rev`
+	topdir="$2"
+	if [ -f tarball/$name ]; then
+		echo " - not required to download $1"
+	else
+		echo " - getting $1"
+		wget -O tarball/$name $1
+	fi
+	trap abort_extract 2
+	if [ -d dist/$2 ]; then
+		echo " - not required to extract tarball/$name"
+	else
+		echo " - extracting tarball/$name"
+		tar xvf tarball/$name -C dist
+	fi
+}
+download http://musl.cc/x86_64-linux-musl-cross.tgz x86_64-linux-musl-cross
