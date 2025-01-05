@@ -11,3 +11,6 @@
 	path = pdksh
 	url = https://github.com/multishell/pdksh
 	branch = ms_5.2.14
+[submodule "vi"]
+	path = vi
+	url = https://github.com/berkeley-linux/vi
