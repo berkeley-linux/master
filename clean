@@ -3,5 +3,9 @@ doas rm -rf dist tarball root
 for i in heritage musl-fts; do
 	cd $i
 	make distclean
+	rm -f .installed
+	rm -f .built
+	rm -f .bootstrapped
+	rm -f .configured
 	cd ..
 done
