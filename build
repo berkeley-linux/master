@@ -1,9 +1,23 @@
 #!/bin/sh
+
+SRCROOT=`pwd`
+export SRCROOT
+
 if [ ! -d tarball ]; then
 	mkdir -p tarball
 fi
 if [ ! -d dist ]; then
 	mkdir -p dist
+fi
+if [ ! -d root ]; then
+	mkdir -p root/usr
+	mkdir -p root/lib64
+	ln -s ../bin root/usr/bin
+	ln -s ../sbin root/usr/sbin
+
+	ln -s ./lib root/usr/lib64
+	ln -s ../lib root/usr/lib
+	ln -s ./lib64 root/lib
 fi
 abort_tarball () {
 	echo
@@ -35,4 +49,103 @@ download () {
 		tar xvf tarball/$name -C dist
 	fi
 }
+
+OLD=""
+NEW=""
+
+enter () {
+	OLD=`pwd`
+	NEW=$1
+	echo " - entering $1"
+	cd $1
+}
+
+leave () {
+	echo " - leaving $NEW"
+	cd $OLD
+}
+
+set_cc () {
+	CC=$SRCROOT/dist/x86_64-linux-musl-cross/bin/x86_64-linux-musl-gcc
+	CXX=$SRCROOT/dist/x86_64-linux-musl-cross/bin/x86_64-linux-musl-g++
+	AS=$SRCROOT/dist/x86_64-linux-musl-cross/bin/x86_64-linux-musl-as
+	LD=$SRCROOT/dist/x86_64-linux-musl-cross/bin/x86_64-linux-musl-ld
+	export CC
+	export CXX
+	export AS
+	export LD
+	CFLAGS="--sysroot=$SRCROOT/root"
+	CXXFLAGS="--sysroot=$SRCROOT/root"
+	LDFLAGS="--sysroot=$SRCROOT/root"
+}
+
 download http://musl.cc/x86_64-linux-musl-cross.tgz x86_64-linux-musl-cross
+download http://git.musl-libc.org/cgit/musl/snapshot/musl-1.2.5.tar.gz musl-1.2.5
+
+set_cc
+
+enter dist/musl-1.2.5
+if [ -f ".configured" ]; then
+	echo " - not configuring"
+else
+	echo " - configuring"
+	./configure --prefix=/usr || exit 1
+	touch .configured
+fi
+if [ -f ".built" ]; then
+	echo " - not building"
+else
+	echo " - building"
+	make -j $(nproc) || exit 1
+	touch .built
+fi
+if [ -f ".installed" ]; then
+	echo " - not installing"
+else
+	echo " - installing"
+	doas make install -j $(nproc) DESTDIR=$SRCROOT/root || exit 1
+	touch .installed
+fi
+leave
+
+enter musl-fts
+if [ -f ".bootstrapped" ]; then
+	echo " - not bootstrapping"
+else
+	echo " - bootstrapping"
+	./bootstrap.sh || exit 1
+	touch .bootstrapped
+fi
+if [ -f ".configured" ]; then
+	echo " - not configuring"
+else
+	echo " - configuring"
+	./configure --prefix=/usr || exit 1
+	touch .configured
+fi
+if [ -f ".built" ]; then
+	echo " - not building"
+else
+	echo " - building"
+	make -j $(nproc) || exit 1
+	touch .built
+fi
+if [ -f ".installed" ]; then
+	echo " - not installing"
+else
+	echo " - installing"
+	doas make install -j $(nproc) DESTDIR=$SRCROOT/root || exit 1
+	touch .installed
+fi
+leave
+
+cp config/heritage.mk heritage/Config.mk
+enter heritage
+if [ -f ".built" ]; then
+	echo " - not building"
+else
+	echo " - building"
+	make -j $(nproc) || exit 1
+	touch .built
+fi
+leave

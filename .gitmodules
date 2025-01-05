@@ -1,3 +1,6 @@
 [submodule "heritage"]
 	path = heritage
 	url = https://github.com/berkeley-linux/heritage
+[submodule "musl-fts"]
+	path = musl-fts
+	url = https://github.com/void-linux/musl-fts
