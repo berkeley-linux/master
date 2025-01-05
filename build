@@ -80,6 +80,9 @@ set_cc () {
 	CFLAGS="--sysroot=$SRCROOT/root -O2"
 	CXXFLAGS="--sysroot=$SRCROOT/root -O2"
 	LDFLAGS="--sysroot=$SRCROOT/root -O2"
+	export CFLAGS
+	export CXXFLAGS
+	export LDFLAGS
 }
 
 build () {
@@ -98,7 +101,7 @@ build () {
 			echo " - not configuring"
 		else
 			echo " - configuring"
-			./configure --prefix=/usr --sysconfdir=/etc --mandir=/usr/man || exit 1
+			./configure --prefix=/usr --sysconfdir=/etc --mandir=/usr/man $4 || exit 1
 			touch .configured
 		fi
 	fi
@@ -121,17 +124,22 @@ build () {
 
 download http://musl.cc/x86_64-linux-musl-cross.tgz x86_64-linux-musl-cross
 download http://git.musl-libc.org/cgit/musl/snapshot/musl-1.2.5.tar.gz musl-1.2.5
+download https://invisible-island.net/archives/ncurses/ncurses-6.5.tar.gz ncurses-6.5
 
 set_cc
 
 cp source/sbrk.c dist/musl-1.2.5/src/linux/
 build dist/musl-1.2.5 DESTDIR
 build musl-fts DESTDIR
+LD_LIBRARY_PATH=$SRCROOT/root/usr/lib
+export LD_LIBRARY_PATH
+build dist/ncurses-6.5 DESTDIR "" "--with-shared --with-termlib --enable-symlinks --disable-widec"
+unset LD_LIBRARY_PATH
 
 cp config/heritage.mk heritage/Config.mk
 build heritage DESTDIR
 
-build sysvinit ROOT
+build sysvinit ROOT "mandir=/usr/man"
 
 build pdksh DESTDIR "prefix=$SRCROOT/root/usr"
 build vi DESTDIR
