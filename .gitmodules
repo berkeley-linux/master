@@ -4,3 +4,6 @@
 [submodule "musl-fts"]
 	path = musl-fts
 	url = https://github.com/void-linux/musl-fts
+[submodule "sysvinit"]
+	path = sysvinit
+	url = https://github.com/slicer69/sysvinit
