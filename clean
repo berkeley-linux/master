@@ -1,6 +1,6 @@
 #!/bin/sh
 doas rm -rf dist tarball root
-for i in heritage musl-fts sysvinit pdksh; do
+for i in heritage musl-fts sysvinit pdksh vi; do
 	cd $i
 	make distclean
 	rm -f .installed

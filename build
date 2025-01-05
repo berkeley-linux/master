@@ -9,14 +9,18 @@ fi
 if [ ! -d dist ]; then
 	mkdir -p dist
 fi
-if [ ! -d root ]; then
+if [ true -o ! -d root ]; then
 	doas mkdir -p root/usr
 	doas mkdir -p root/lib64
 	doas mkdir -p root/bin
+	doas mkdir -p root/tmp
+	doas mkdir -p root/var
 	doas ln -s ./ksh root/bin/sh
 	doas ln -s ./sbin root/usr/bin
 	doas ln -s ../bin root/usr/sbin
 	doas ln -s ./bin root/sbin
+	
+	doas ln -s ../tmp root/var/tmp
 
 	doas ln -s ./lib root/usr/lib64
 	doas ln -s ../lib root/usr/lib
