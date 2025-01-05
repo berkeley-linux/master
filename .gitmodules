@@ -7,3 +7,7 @@
 [submodule "sysvinit"]
 	path = sysvinit
 	url = https://github.com/slicer69/sysvinit
+[submodule "pdksh"]
+	path = pdksh
+	url = https://github.com/multishell/pdksh
+	branch = ms_5.2.14

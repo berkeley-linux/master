@@ -13,6 +13,7 @@ if [ ! -d root ]; then
 	doas mkdir -p root/usr
 	doas mkdir -p root/lib64
 	doas mkdir -p root/bin
+	doas ln -s ./ksh root/bin/sh
 	doas ln -s ./sbin root/usr/bin
 	doas ln -s ../bin root/usr/sbin
 	doas ln -s ./bin root/sbin
@@ -76,9 +77,46 @@ set_cc () {
 	export CXX
 	export AS
 	export LD
-	CFLAGS="--sysroot=$SRCROOT/root"
-	CXXFLAGS="--sysroot=$SRCROOT/root"
-	LDFLAGS="--sysroot=$SRCROOT/root"
+	CFLAGS="--sysroot=$SRCROOT/root -O2"
+	CXXFLAGS="--sysroot=$SRCROOT/root -O2"
+	LDFLAGS="--sysroot=$SRCROOT/root -O2"
+}
+
+build () {
+	enter $1
+	if [ -f .bootstrapped ]; then
+		if [ -f ".bootstrapped" ]; then
+			echo " - not bootstrapping"
+		else
+			echo " - bootstrapping"
+			./bootstrap.sh || exit 1
+			touch .bootstrapped
+		fi
+	fi
+	if [ -f configure ]; then
+		if [ -f ".configured" ]; then
+			echo " - not configuring"
+		else
+			echo " - configuring"
+			./configure --prefix=/usr --sysconfdir=/etc --mandir=/usr/share/man || exit 1
+			touch .configured
+		fi
+	fi
+	if [ -f ".built" ]; then
+		echo " - not building"
+	else
+		echo " - building"
+		make -j $(nproc) || exit 1
+		touch .built
+	fi
+	if [ -f ".installed" ]; then
+		echo " - not installing"
+	else
+		echo " - installing"
+		doas make install -j $(nproc) $2=$SRCROOT/root $3 || exit 1
+		touch .installed
+	fi
+	leave
 }
 
 download http://musl.cc/x86_64-linux-musl-cross.tgz x86_64-linux-musl-cross
@@ -87,75 +125,12 @@ download http://git.musl-libc.org/cgit/musl/snapshot/musl-1.2.5.tar.gz musl-1.2.
 set_cc
 
 cp source/sbrk.c dist/musl-1.2.5/src/linux/
-enter dist/musl-1.2.5
-if [ -f ".configured" ]; then
-	echo " - not configuring"
-else
-	echo " - configuring"
-	./configure --prefix=/usr || exit 1
-	touch .configured
-fi
-if [ -f ".built" ]; then
-	echo " - not building"
-else
-	echo " - building"
-	make -j $(nproc) || exit 1
-	touch .built
-fi
-if [ -f ".installed" ]; then
-	echo " - not installing"
-else
-	echo " - installing"
-	doas make install -j $(nproc) DESTDIR=$SRCROOT/root || exit 1
-	touch .installed
-fi
-leave
-
-enter musl-fts
-if [ -f ".bootstrapped" ]; then
-	echo " - not bootstrapping"
-else
-	echo " - bootstrapping"
-	./bootstrap.sh || exit 1
-	touch .bootstrapped
-fi
-if [ -f ".configured" ]; then
-	echo " - not configuring"
-else
-	echo " - configuring"
-	./configure --prefix=/usr || exit 1
-	touch .configured
-fi
-if [ -f ".built" ]; then
-	echo " - not building"
-else
-	echo " - building"
-	make -j $(nproc) || exit 1
-	touch .built
-fi
-if [ -f ".installed" ]; then
-	echo " - not installing"
-else
-	echo " - installing"
-	doas make install -j $(nproc) DESTDIR=$SRCROOT/root || exit 1
-	touch .installed
-fi
-leave
+build dist/musl-1.2.5 DESTDIR
+build musl-fts DESTDIR
 
 cp config/heritage.mk heritage/Config.mk
-enter heritage
-if [ -f ".built" ]; then
-	echo " - not building"
-else
-	echo " - building"
-	make -j $(nproc) || exit 1
-	touch .built
-fi
-if [ -f ".installed" ]; then
-	echo " - not installing"
-else
-	echo " - installing"
-	doas make install -j $(nproc) DESTDIR=$SRCROOT/root || exit 1
-	touch .installed
-fi
-leave
+build heritage DESTDIR
+
+build sysvinit ROOT
+
+build pdksh DESTDIR "prefix=$SRCROOT/root/usr"
