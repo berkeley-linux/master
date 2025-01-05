@@ -1,0 +1,7 @@
+#!/bin/sh
+doas rm -rf dist tarball root
+for i in heritage musl-fts; do
+	cd $i
+	make distclean
+	cd ..
+done

@@ -10,14 +10,16 @@ if [ ! -d dist ]; then
 	mkdir -p dist
 fi
 if [ ! -d root ]; then
-	mkdir -p root/usr
-	mkdir -p root/lib64
-	ln -s ../bin root/usr/bin
-	ln -s ../sbin root/usr/sbin
+	doas mkdir -p root/usr
+	doas mkdir -p root/lib64
+	doas mkdir -p root/bin
+	doas ln -s ./sbin root/usr/bin
+	doas ln -s ../bin root/usr/sbin
+	doas ln -s ./bin root/sbin
 
-	ln -s ./lib root/usr/lib64
-	ln -s ../lib root/usr/lib
-	ln -s ./lib64 root/lib
+	doas ln -s ./lib root/usr/lib64
+	doas ln -s ../lib root/usr/lib
+	doas ln -s ./lib64 root/lib
 fi
 abort_tarball () {
 	echo
@@ -84,6 +86,7 @@ download http://git.musl-libc.org/cgit/musl/snapshot/musl-1.2.5.tar.gz musl-1.2.
 
 set_cc
 
+cp source/sbrk.c dist/musl-1.2.5/src/linux/
 enter dist/musl-1.2.5
 if [ -f ".configured" ]; then
 	echo " - not configuring"
@@ -147,5 +150,12 @@ else
 	echo " - building"
 	make -j $(nproc) || exit 1
 	touch .built
+fi
+if [ -f ".installed" ]; then
+	echo " - not installing"
+else
+	echo " - installing"
+	doas make install -j $(nproc) DESTDIR=$SRCROOT/root || exit 1
+	touch .installed
 fi
 leave
