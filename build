@@ -31,10 +31,13 @@ if [ ! -d root ]; then
 	doas mkdir -p root/root
 	doas mkdir -p root/var
 	doas mkdir -p root/isolinux
+	doas mkdir -p root/etc
 
 	doas mkdir -p root/proc
 	doas mkdir -p root/sys
 	doas mkdir -p root/dev
+
+	doas ln -s ../proc/mounts root/etc/mtab
 
 	doas ln -s ../tmp/resolv.conf root/etc/resolv.conf
 	doas ln -s ../man root/usr/share/man
@@ -126,7 +129,7 @@ build () {
 			touch .bootstrapped
 		fi
 	fi
-	if [ -f configure ]; then
+	if [ -f configure -o $1 = dist/net-tools-2.10 ]; then
 		if [ -f ".configured" ]; then
 			echo " - not configuring"
 		else
@@ -137,6 +140,11 @@ build () {
 					;;
 				dist/util-linux-*)
 					./configure --prefix=/usr/linux --sysconfdir=/etc --mandir=/usr/man $4 || exit 1
+					;;
+				dist/net-tools-*)
+					yes | make config
+					sed -Ei 's/#define (HAVE_AFECONET|HAVE_HWSTRIP|HAVE_HWTR|HAVE_SELINUX|HAVE_AFBLUETOOTH|HAVE_AFDECnet) 1//g' config.h
+					sed -Ei 's/(HAVE_AFECONET|HAVE_HWSTRIP|HAVE_HWTR|HAVE_SELINUX|HAVE_AFBLUETOOTH|HAVE_AFDECnet)=1/\1=0/g' config.make
 					;;
 				*)
 					./configure --prefix=/usr --sysconfdir=/etc --mandir=/usr/man $4 || exit 1
@@ -175,11 +183,11 @@ if [ ! -f root/bzImage ]; then
 	doas wget $SLACKWARE_ROOT/slackware64-current/kernels/generic.s/bzImage -O root/bzImage
 fi
 
-if [ ! -f dist/kernel-$LINUX_VER.txz ]; then
-	wget $SLACKWARE_ROOT/slackware64-current/slackware64/a/kernel-generic-$LINUX_VER-x86_64-1.txz -O dist/kernel-$LINUX_VER.txz
+if [ ! -f tarball/kernel-$LINUX_VER.txz ]; then
+	wget $SLACKWARE_ROOT/slackware64-current/slackware64/a/kernel-generic-$LINUX_VER-x86_64-1.txz -O tarball/kernel-$LINUX_VER.txz
 fi
 if [ ! -d root/lib/modules ]; then
-	doas tar xkvf dist/kernel-$LINUX_VER.txz -C root/usr lib
+	doas tar xkvf tarball/kernel-$LINUX_VER.txz -C root/usr lib
 fi
 
 download http://musl.cc/x86_64-linux-musl-cross.tgz x86_64-linux-musl-cross
@@ -191,6 +199,8 @@ download https://ftp.gnu.org/gnu/less/less-668.tar.gz less-668
 download https://www.kernel.org/pub/linux/utils/util-linux/v2.40/util-linux-2.40.tar.gz util-linux-2.40
 download https://github.com/sqlite/sqlite/archive/refs/tags/version-3.47.0.tar.gz sqlite-version-3.47.0
 download https://mirrors.edge.kernel.org/pub/linux/utils/kernel/kmod/kmod-33.tar.gz kmod-33
+download https://downloads.sourceforge.net/project/net-tools/net-tools-2.10.tar.xz net-tools-2.10
+download https://github.com/shadow-maint/shadow/releases/download/4.16.0/shadow-4.16.0.tar.xz shadow-4.16.0
 
 trap "exit 1 " 2
 
@@ -201,6 +211,7 @@ build dist/musl-1.2.5 DESTDIR
 build musl-fts DESTDIR
 
 build dist/zlib-1.3.1 DESTDIR "" "--enable-shared"
+build dist/shadow-4.16.0 DESTDIR "" "--without-libbsd --with-bcrypt --with-yescrypt"
 
 echo "PREFIX=/usr" > dist/mandoc-1.14.6/configure.local
 echo "CC=$CC" >> dist/mandoc-1.14.6/configure.local
@@ -229,6 +240,8 @@ build dist/sqlite-version-3.47.0 DESTDIR "" "--disable-tcl --disable-readline"
 build dist/util-linux-2.40 DESTDIR "" "--without-systemd --without-python --without-ncursesw"
 
 build dist/kmod-33 DESTDIR
+
+build dist/net-tools-2.10 DESTDIR
 
 if [ ! -f root/sbin/popdev ]; then
 	echo " - compiling popdev"
@@ -294,7 +307,7 @@ doas cp /usr/lib/syslinux/modules/bios/ldlinux.c32 root/isolinux/
 doas cp /usr/lib/syslinux/modules/bios/libutil.c32 root/isolinux/
 doas cp /usr/lib/syslinux/modules/bios/menu.c32 root/isolinux/
 
-cat > isolinux.cfg << EOF
+doas sh -c 'cat > root/isolinux/isolinux.cfg' << EOF
 default menu.c32
 timeout 50
 menu title Boot Menu
@@ -304,6 +317,13 @@ label linux
        initrd /initrd.gz
        append root=LABEL=BLNXINST rootfstype=iso9660 loglevel=4 installer
 EOF
-doas mv isolinux.cfg root/isolinux/isolinux.cfg
+
+doas sh -c 'echo berkeley > root/etc/nodename'
+
+doas sh -c 'cat > root/etc/issue' << EOF
+Welcome to Berkeley Linux - The Linux Distribution
+           from Nishi
+System name: \n
+EOF
 
 xorriso -as mkisofs -V "BLNXINST" -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -b isolinux/isolinux.bin -no-emul-boot -boot-load-size 4 -o output.iso root

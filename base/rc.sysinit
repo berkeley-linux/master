@@ -3,6 +3,11 @@
 
 . /etc/profile
 
+clear
+
+printf "\033[1m\033[31mBerkeley\033[m \033[1mLinux\033[m booting up\n"
+echo
+
 echo 'Mounting a required filesystem'
 mkdir -p /dev/pts
 mount -t devpts devpts /dev/pts
@@ -12,7 +17,7 @@ mount -t tmpfs tmpfs /tmp
 ln -sf /proc/self/fd /dev/fd
 ln -sf /proc/kcore /dev/core
 
-if [ "`grep -Ec 'installer' /proc/cmdline`" -gt "0" ]; then
+if [ "`grep -c 'installer' /proc/cmdline`" -gt "0" ]; then
 	echo '************* Booting up installer system *************'
 	mount -t tmpfs tmpfs /var/log
 	mount -t tmpfs tmpfs /var/run
@@ -21,10 +26,9 @@ if [ "`grep -Ec 'installer' /proc/cmdline`" -gt "0" ]; then
 	mount -t tmpfs tmpfs /run
 	mount -t tmpfs tmpfs /root
 	touch /tmp/resolv.conf
-	mkdir -p /var/run
 fi
 
-if [ "`grep -Ec 'installer' /proc/cmdline`" -gt "0" ]; then
+if [ "`grep -c 'installer' /proc/cmdline`" -gt "0" ]; then
 	:
 else
 	echo "Remounting root"
@@ -33,3 +37,39 @@ fi
 
 rm -f /run/initctl
 ln -s /dev/initctl /run/initctl
+
+echo "Setting popdev for hotplug event"
+echo /sbin/popdev > /proc/sys/kernel/hotplug
+
+if [ -e "/etc/nodename" ]; then
+	echo "Setting nodename: `cat /etc/nodename`"
+	hostname `cat /etc/nodename`
+fi
+
+echo "Loading IPv6"
+modprobe ipv6
+
+echo "Setting loopback"
+ifconfig lo 127.0.0.1 netmask 255.0.0.0
+ifconfig lo up
+
+echo "Loading modules"
+find /sys -name "modalias" | while read a; do
+	load=1
+	( cat $a | grep "pcspkr" >/dev/null 2>&1 ) && load=0
+	if [ "$load" = "1" ]; then
+		modprobe `cat $a` >/dev/null 2>&1 || true
+	fi
+done
+
+if [ -e /usr/sbin/alsactl ]; then
+	echo "Initializing ALSA"
+	alsactl init
+fi
+
+if [ "`grep -c 'installer' /proc/cmdline`" -gt "0" ]; then
+	:
+else
+	echo "Mounting all filesystems"
+	mount -a || true
+fi
