@@ -326,4 +326,14 @@ Welcome to Berkeley Linux - The Linux Distribution
 System name: \n
 EOF
 
-xorriso -as mkisofs -V "BLNXINST" -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -b isolinux/isolinux.bin -no-emul-boot -boot-load-size 4 -o output.iso root
+doas chroot root /usr/sbin/groupadd -g 0 root
+doas chroot root /usr/sbin/useradd -p x -g 0 -u 0 -d /root -s /bin/sh root
+echo "root:`mkpasswd -m sha512crypt root`:0::::::" | doas sh -c 'cat > root/etc/shadow'
+echo root:root | doas chroot root /usr/sbin/chpasswd -c SHA512
+
+doas chmod 644 root/etc/passwd
+doas chmod 644 root/etc/group
+doas chmod 600 root/etc/shadow
+doas chmod 4755 root/usr/sbin/unix_chkpwd
+
+doas xorriso -as mkisofs -V "BLNXINST" -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -b isolinux/isolinux.bin -no-emul-boot -boot-load-size 4 -o - root > output.iso
