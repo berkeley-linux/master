@@ -17,7 +17,6 @@ if [ ! -d initrd ]; then
 	doas mkdir -p initrd/newroot
 	doas mkdir -p initrd/bin
 	doas mkdir -p initrd/lib
-	doas mkdir -p initrd/isolinux
 fi
 if [ ! -d root ]; then
 	doas mkdir -p root/usr/share
@@ -25,14 +24,27 @@ if [ ! -d root ]; then
 	doas mkdir -p root/lib64
 	doas mkdir -p root/bin
 	doas mkdir -p root/tmp
+	doas mkdir -p root/run
+	doas mkdir -p root/var/run
+	doas mkdir -p root/var/log
+	doas mkdir -p root/var/db
+	doas mkdir -p root/root
 	doas mkdir -p root/var
+	doas mkdir -p root/isolinux
 
+	doas mkdir -p root/proc
+	doas mkdir -p root/sys
+	doas mkdir -p root/dev
+
+	doas ln -s ../tmp/resolv.conf root/etc/resolv.conf
 	doas ln -s ../man root/usr/share/man
 
 	doas ln -s ./ksh root/bin/sh
 	doas ln -s ./sbin root/usr/bin
 	doas ln -s ../bin root/usr/sbin
 	doas ln -s ./bin root/sbin
+	
+	doas ln -s ../usr/linux/sbin/agetty root/sbin/getty
 	
 	doas ln -s ../tmp root/var/tmp
 
@@ -274,6 +286,7 @@ if [ ! -f root/initrd.gz ]; then
 	cd ..
 	gzip -c init.rd > initrd.gz
 	doas mv initrd.gz root/initrd.gz
+	rm -f init.rd
 fi
 
 doas cp /usr/lib/ISOLINUX/isolinux.bin root/isolinux/

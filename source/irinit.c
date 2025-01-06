@@ -12,6 +12,7 @@
 #include <sys/mount.h>
 #include <blkid/blkid.h>
 #include <sys/stat.h>
+#include <sys/sysmacros.h>
 
 void popdev_scan(void);
 
@@ -136,6 +137,12 @@ int main(int argc, char** argv){
 	chroot(".");
 	chdir("/");
 	mknod("/dev/initctl", S_IFIFO, 0);
+	if(access("/dev/console", F_OK) != 0){
+		printf("Creating /dev/console\n");
+		if(mknod("/dev/console", S_IFCHR | S_IRUSR | S_IWUSR, makedev(5, 1)) != 0){
+			printf("Error: %s\n", strerror(errno));
+		}
+	}
 	if(access("/sbin/init", X_OK) != 0) return 0;
 	fd = open("/dev/console", O_RDWR);
 	if(fd < 0){

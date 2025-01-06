@@ -1,2 +1,35 @@
 #!/bin/sh
 # TO: /etc/rc.sysinit
+
+. /etc/profile
+
+echo 'Mounting a required filesystem'
+mkdir -p /dev/pts
+mount -t devpts devpts /dev/pts
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t tmpfs tmpfs /tmp
+ln -sf /proc/self/fd /dev/fd
+ln -sf /proc/kcore /dev/core
+
+if [ "`grep -Ec 'installer' /proc/cmdline`" -gt "0" ]; then
+	echo '************* Booting up installer system *************'
+	mount -t tmpfs tmpfs /var/log
+	mount -t tmpfs tmpfs /var/run
+	mount -t tmpfs tmpfs /var/tmp
+	mount -t tmpfs tmpfs /var/db
+	mount -t tmpfs tmpfs /run
+	mount -t tmpfs tmpfs /root
+	touch /tmp/resolv.conf
+	mkdir -p /var/run
+fi
+
+if [ "`grep -Ec 'installer' /proc/cmdline`" -gt "0" ]; then
+	:
+else
+	echo "Remounting root"
+	mount -o remount,rw /
+fi
+
+rm -f /run/initctl
+ln -s /dev/initctl /run/initctl

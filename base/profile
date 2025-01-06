@@ -1,0 +1,7 @@
+#!/bin/sh
+# TO: /etc/profile
+
+LD_LIBRARY_PATH="/lib:/usr/linux/lib"
+PATH="/bin:/sbin:/usr/bin:/usr/sbin:/usr/linux/bin:/usr/linux/sbin"
+export LD_LIBRARY_PATH
+export PATH
