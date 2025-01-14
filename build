@@ -19,6 +19,7 @@ if [ ! -d initrd ]; then
 	doas mkdir -p initrd/lib
 fi
 if [ ! -d root ]; then
+	doas mkdir -p root/usr/include/sys
 	doas mkdir -p root/usr/share
 	doas mkdir -p root/usr/man
 	doas mkdir -p root/lib64
@@ -29,9 +30,12 @@ if [ ! -d root ]; then
 	doas mkdir -p root/var/log
 	doas mkdir -p root/var/db
 	doas mkdir -p root/root
-	doas mkdir -p root/var
+	doas mkdir -p root/var/mail
+	doas mkdir -p root/var/spool/mqueue
 	doas mkdir -p root/isolinux
 	doas mkdir -p root/etc
+
+	doas install -d -m755 root/etc/mail
 
 	doas mkdir -p root/proc
 	doas mkdir -p root/sys
@@ -55,20 +59,7 @@ if [ ! -d root ]; then
 	doas ln -s ../lib root/usr/lib
 	doas ln -s ./lib64 root/lib
 fi
-abort_tarball () {
-	echo
-	echo " - aborted"
-	rm -f tarball/$name
-	exit 1
-}
-abort_extract () {
-	echo
-	echo " - aborted"
-	rm -rf dist/$topdir
-	exit 1
-}
 download () {
-	trap abort_tarball 2
 	name=`echo "$1" | rev | cut -d"/" -f1 | rev`
 	topdir="$2"
 	if [ -f tarball/$name ]; then
@@ -77,7 +68,6 @@ download () {
 		echo " - getting $1"
 		wget -O tarball/$name $1
 	fi
-	trap abort_extract 2
 	if [ -d dist/$2 ]; then
 		echo " - not required to extract tarball/$name"
 	else
@@ -173,6 +163,18 @@ SLACKWARE_ROOT="http://mirror.slackware.jp/slackware"
 LINUX_VER=`wget -O - "$SLACKWARE_ROOT/slackware64-current/kernels/VERSIONS.TXT" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+'`
 echo " - Linux $LINUX_VER"
 
+if [ ! -f root/usr/include/sys/cdefs.h ]; then
+	doas wget https://github.com/openembedded/openembedded-core/raw/refs/heads/master/meta/recipes-core/musl/bsd-headers/sys-cdefs.h -O root/usr/include/sys/cdefs.h
+fi
+
+if [ ! -f root/usr/include/sys/queue.h ]; then
+	doas wget https://github.com/openembedded/openembedded-core/raw/refs/heads/master/meta/recipes-core/musl/bsd-headers/sys-queue.h -O root/usr/include/sys/queue.h
+fi
+
+if [ ! -f root/usr/include/sys/tree.h ]; then
+	doas wget https://github.com/openembedded/openembedded-core/raw/refs/heads/master/meta/recipes-core/musl/bsd-headers/sys-tree.h -O root/usr/include/sys/tree.h
+fi
+
 download $SLACKWARE_ROOT/slackware64-current/source/k/linux-$LINUX_VER.tar.xz linux-$LINUX_VER
 if [ ! -d root/usr/include/linux ]; then
 	enter dist/linux-$LINUX_VER
@@ -201,8 +203,7 @@ download https://github.com/sqlite/sqlite/archive/refs/tags/version-3.47.0.tar.g
 download https://mirrors.edge.kernel.org/pub/linux/utils/kernel/kmod/kmod-33.tar.gz kmod-33
 download https://downloads.sourceforge.net/project/net-tools/net-tools-2.10.tar.xz net-tools-2.10
 download https://github.com/shadow-maint/shadow/releases/download/4.16.0/shadow-4.16.0.tar.xz shadow-4.16.0
-
-trap "exit 1 " 2
+download https://ftp.sendmail.org/sendmail.8.18.1.tar.gz sendmail-8.18.1
 
 set_cc
 
@@ -242,6 +243,30 @@ build dist/util-linux-2.40 DESTDIR "" "--without-systemd --without-python --with
 build dist/kmod-33 DESTDIR
 
 build dist/net-tools-2.10 DESTDIR
+
+doas groupadd -g 80 smmsp
+doas useradd -u 80 -s /bin/false -d /dev/null -g smmsp -c "Sendmail Daemon" smmsp
+
+cat > dist/sendmail-8.18.1/devtools/Site/site.config.m4 << EOF
+define(\`confCC',\`$CC --sysroot=$SRCROOT/root')
+define(\`confOPTIMIZE',\`-O2')
+APPENDDEF(\`confENVDEF',\`-UNIS -DHASRRESVPORT=0 -DHASSTRERROR')
+EOF
+
+build dist/sendmail-8.18.1 DESTDIR
+
+enter dist/sendmail-8.18.1
+cd cf/cf
+cp generic-linux.mc sendmail.mc
+sh Build sendmail.cf
+cd ../..
+doas install -m644 cf/cf/submit.mc $SRCROOT/root/etc/mail
+doas install -m644 cf/cf/sendmail.mc $SRCROOT/root/etc/mail
+doas cp -R cf/cf/* $SRCROOT/root/etc/mail/
+leave
+
+doas groupdel smmsp
+doas userdel smmsp
 
 if [ ! -f root/sbin/popdev ]; then
 	echo " - compiling popdev"
@@ -327,7 +352,11 @@ System name: \n
 EOF
 
 doas chroot root /usr/sbin/groupadd -g 0 root
+doas chroot root /usr/sbin/groupadd -g 1 daemon
+doas chroot root /usr/sbin/groupadd -g 2 bin
+doas chroot root /usr/sbin/groupadd -g 80 smmsp
 doas chroot root /usr/sbin/useradd -p x -g 0 -u 0 -d /root -s /bin/sh root
+doas chroot root /usr/sbin/useradd -u 80 -s /bin/false -d /dev/null -g smmsp -c "Sendmail Daemon" smmsp
 echo "root:`mkpasswd -m sha512crypt root`:0::::::" | doas sh -c 'cat > root/etc/shadow'
 echo root:root | doas chroot root /usr/sbin/chpasswd -c SHA512
 
@@ -335,5 +364,7 @@ doas chmod 644 root/etc/passwd
 doas chmod 644 root/etc/group
 doas chmod 600 root/etc/shadow
 doas chmod 4755 root/usr/sbin/unix_chkpwd
+doas chmod 1777 root/var/mail
+doas install -m700 -d root/var/spool/mqueue
 
-doas xorriso -as mkisofs -V "BLNXINST" -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -b isolinux/isolinux.bin -no-emul-boot -boot-load-size 4 -o - root > output.iso
+doas xorriso -as mkisofs -V "BLNXINST" -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -b isolinux/isolinux.bin -no-emul-boot -boot-load-size 4 -o output.iso root
