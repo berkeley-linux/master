@@ -16,7 +16,7 @@ fi
 unmount=0
 installer=0
 
-if [ "`grep -Ec 'installer' /proc/cmdline`" -gt "0" ]; then
+if [ "`grep -c 'installer' /proc/cmdline`" -gt "0" ]; then
 	installer=1
 fi
 

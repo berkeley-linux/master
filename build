@@ -34,6 +34,7 @@ if [ ! -d root ]; then
 	doas mkdir -p root/var/spool/mqueue
 	doas mkdir -p root/isolinux
 	doas mkdir -p root/etc
+	doas mkdir -p root/etc/rc.d
 
 	doas install -d -m755 root/etc/mail
 
@@ -256,14 +257,18 @@ EOF
 
 build dist/sendmail-8.18.1 DESTDIR
 
+doas rm -rf $SRCROOT/root/etc/mail
+doas mkdir -p $SRCROOT/root/etc/mail
+
 enter dist/sendmail-8.18.1
 cd cf/cf
 cp generic-linux.mc sendmail.mc
-sh Build sendmail.cf
+doas sh Build sendmail.cf
 cd ../..
 doas install -m644 cf/cf/submit.mc $SRCROOT/root/etc/mail
 doas install -m644 cf/cf/sendmail.mc $SRCROOT/root/etc/mail
-doas cp -R cf/cf/* $SRCROOT/root/etc/mail/
+doas install -m644 cf/cf/*.cf $SRCROOT/root/etc/mail
+doas cp -R cf/* $SRCROOT/root/etc/mail
 leave
 
 doas groupdel smmsp
@@ -356,7 +361,7 @@ EOF
 doas sh -c 'echo berkeley > root/etc/nodename'
 doas sh -c 'echo berkeley > root/etc/mail/local-host-names'
 
-doas sh -c 'cat > roiot/etc/mail/aliases' << EOF
+doas sh -c 'cat > root/etc/mail/aliases' << EOF
 postmater: root
 MAILER-DAEMON: root
 
@@ -377,6 +382,7 @@ doas chroot root /usr/sbin/useradd -u 80 -s /bin/false -d /dev/null -g smmsp -c 
 echo "root:`mkpasswd -m sha512crypt root`:0::::::" | doas sh -c 'cat > root/etc/shadow'
 echo root:root | doas chroot root /usr/sbin/chpasswd -c SHA512
 
+doas cp /etc/services root/etc/
 doas chmod 644 root/etc/passwd
 doas chmod 644 root/etc/group
 doas chmod 600 root/etc/shadow

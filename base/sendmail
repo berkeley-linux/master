@@ -1,0 +1,16 @@
+#!/bin/sh
+# $Id: sendmail 31 2024-10-26 17:51:18Z nishi $
+# TO: /etc/rc.d/sendmail
+
+# REQUIRE: NETWORK
+# PROVIDE: sendmail
+
+. /etc/rc.subr
+
+name="sendmail"
+pidfile="/var/run/sendmail.pid"
+command="/usr/sbin/sendmail"
+command_args="-bs -bd -q5m"
+
+load_rc_config "$name"
+run_rc_command "$1"

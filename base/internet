@@ -1,0 +1,22 @@
+#!/bin/sh
+# $Id: internet 32 2024-10-27 14:36:51Z nishi $
+# TO: /etc/rc.d/internet
+
+# PROVIDE: NETWORK
+
+. /etc/rc.subr
+
+name="internet"
+
+internet_start ()
+{
+	:
+}
+
+internet_stop ()
+{
+	:
+}
+
+load_rc_config "$name"
+run_rc_command "$1"
