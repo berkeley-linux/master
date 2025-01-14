@@ -1,0 +1,31 @@
+#!/bin/sh
+# $Id: rc.subr 31 2024-10-26 17:51:18Z nishi $
+# TO: /etc/rc.subr
+
+load_rc_config ()
+{
+	:
+}
+
+run_rc_command ()
+{
+	if [ "$1" = "info" ]; then
+		echo "DAEMON_NAME=$name"
+	elif [ "$1" = "start" ]; then
+		if [ "x$command" = "x" ]; then
+			${name}_start
+		else
+			$command $command_args
+		fi
+	elif [ "$1" = "stop" ]; then
+		if [ "x$pidfile" = "x" ]; then
+			${name}_stop
+		else
+			kill `cat $pidfile`
+		fi
+	elif [ "$1" = "restart" ]; then
+		run_rc_command stop
+		/usr/bin/sleep 1
+		run_rc_command start
+	fi
+}
