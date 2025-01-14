@@ -204,6 +204,7 @@ download https://mirrors.edge.kernel.org/pub/linux/utils/kernel/kmod/kmod-33.tar
 download https://downloads.sourceforge.net/project/net-tools/net-tools-2.10.tar.xz net-tools-2.10
 download https://github.com/shadow-maint/shadow/releases/download/4.16.0/shadow-4.16.0.tar.xz shadow-4.16.0
 download https://ftp.sendmail.org/sendmail.8.18.1.tar.gz sendmail-8.18.1
+download https://github.com/htop-dev/htop/releases/download/3.3.0/htop-3.3.0.tar.xz htop-3.3.0
 
 set_cc
 
@@ -268,11 +269,20 @@ leave
 doas groupdel smmsp
 doas userdel smmsp
 
+build dist/htop-3.3.0 DESTDIR "" "--disable-unicode"
+
 if [ ! -f root/sbin/popdev ]; then
 	echo " - compiling popdev"
 	doas $CC $CFLAGS $LDFLAGS -o root/sbin/popdev source/popdev.c
 else
 	echo " - not compiling popdev"
+fi
+
+if [ ! -f root/etc/rcorder ]; then
+	echo " - compiling rcorder"
+	doas $CC $CFLAGS $LDFLAGS -o root/etc/rcorder source/rcorder.c
+else
+	echo " - not compiling rcorder"
 fi
 
 if [ ! -f root/sbin/irinit ]; then
@@ -344,6 +354,13 @@ label linux
 EOF
 
 doas sh -c 'echo berkeley > root/etc/nodename'
+doas sh -c 'echo berkeley > root/etc/mail/local-host-names'
+
+doas sh -c 'cat > roiot/etc/mail/aliases' << EOF
+postmater: root
+MAILER-DAEMON: root
+
+EOF
 
 doas sh -c 'cat > root/etc/issue' << EOF
 Welcome to Berkeley Linux - The Linux Distribution

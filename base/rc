@@ -1,4 +1,98 @@
 #!/bin/sh
+# $Id: rc 56 2024-10-29 02:02:46Z nishi $
 # TO: /etc/rc
 
+. /etc/profile
 
+if [ "x$1" = "xenabled" ]; then
+	. /etc/rc.conf
+	if [ "x`eval echo '$'$2`" = "xYES" ]; then
+		exit 0
+	else
+		exit 1
+	fi
+fi
+
+unmount=0
+installer=0
+
+if [ "`grep -Ec 'installer' /proc/cmdline`" -gt "0" ]; then
+	installer=1
+fi
+
+kill_processes ()
+{
+	count=""
+	while true; do
+		kill -1 >/dev/null 2>&1 || break
+		sleep 1
+		count=a$count
+		if [ "$count" = "aaaaaaaaaa" ]; then
+			kill -9 -1
+			break
+		fi
+	done
+}
+
+start_daemons ()
+{
+	first=1
+	. /etc/rc.conf
+	for i in `/etc/rcorder`; do
+		export `$i info`
+		if [ "x`eval echo '$'$DAEMON_NAME`" = "xYES" ]; then
+			if [ "$first" = "0" ]; then
+				echo -n ", "
+			fi
+			echo -n $DAEMON_NAME
+			$i start
+			first=0
+		fi
+	done
+}
+
+if [ "$RUNLEVEL" = "0" -o "$RUNLEVEL" = "1" -o "$RUNLEVEL" = "6" ]; then
+	echo "Stopping daemons"
+	for i in `/etc/rcorder`; do
+		$i stop
+	done
+	if [ "$RUNLEVEL" = "1" ]; then
+		:
+	else
+		unmount=1
+	fi
+else
+	echo -n "Starting daemons: "
+	case $RUNLEVEL in
+		[2345])
+			start_daemons
+			echo
+			;;
+	esac
+	echo
+fi
+
+if [ "$unmount" = "1" ]; then
+	echo "Killing processes"
+	kill_processes
+	echo "Syncing filesystems"
+	sync
+	echo "Unmounting filesystems"
+	while true; do
+		kill -9 -1
+		umount -a -t notmpfs || continue
+		mount -o remount,ro / || continue
+		break
+	done
+	sleep 1
+fi
+if [ "$RUNLEVEL" = "0" ]; then
+	poweroff
+fi
+if [ "$RUNLEVEL" = "1" ]; then
+	mount -o remount,ro /
+	telinit S
+fi
+if [ "$RUNLEVEL" = "6" ]; then
+	reboot
+fi
