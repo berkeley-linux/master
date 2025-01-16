@@ -21,7 +21,11 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        submodules: recursive
     - name: Install
+      run: sudo apt-get install autoconf automake make
+    - name: Build
       run: ./build
       env:
         AS_ROOT: sudo
