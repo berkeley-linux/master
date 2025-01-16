@@ -1,0 +1,35 @@
+name: Build the Distro
+
+on:
+  workflow_dispatch:
+  push:
+
+concurrency:
+  group: "build"
+  cancel-in-progress: true
+
+jobs:
+  release:
+    
+    name: "Release"
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Install
+      run: ./build
+      env:
+        AS_ROOT: sudo
+    - name: Delete old release
+      run: gh release delete "current" --cleanup-tag -y || true
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Release
+      run: gh release create -t "vcurrent" "current" output.iso
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

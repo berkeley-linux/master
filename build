@@ -1,5 +1,9 @@
 #!/bin/sh
 
+if [ "x$AS_ROOT" = "x" ]; then
+	AS_ROOT=doas
+fi
+
 SRCROOT=`pwd`
 export SRCROOT
 
@@ -10,55 +14,55 @@ if [ ! -d dist ]; then
 	mkdir -p dist
 fi
 if [ ! -d initrd ]; then
-	doas mkdir -p initrd/proc
-	doas mkdir -p initrd/sys
-	doas mkdir -p initrd/tmp
-	doas mkdir -p initrd/dev
-	doas mkdir -p initrd/newroot
-	doas mkdir -p initrd/bin
-	doas mkdir -p initrd/lib
+	$AS_ROOT mkdir -p initrd/proc
+	$AS_ROOT mkdir -p initrd/sys
+	$AS_ROOT mkdir -p initrd/tmp
+	$AS_ROOT mkdir -p initrd/dev
+	$AS_ROOT mkdir -p initrd/newroot
+	$AS_ROOT mkdir -p initrd/bin
+	$AS_ROOT mkdir -p initrd/lib
 fi
 if [ ! -d root ]; then
-	doas mkdir -p root/usr/include/sys
-	doas mkdir -p root/usr/share
-	doas mkdir -p root/usr/man
-	doas mkdir -p root/lib64
-	doas mkdir -p root/bin
-	doas mkdir -p root/tmp
-	doas mkdir -p root/run
-	doas mkdir -p root/var/run
-	doas mkdir -p root/var/log
-	doas mkdir -p root/var/db
-	doas mkdir -p root/root
-	doas mkdir -p root/var/mail
-	doas mkdir -p root/var/spool/mqueue
-	doas mkdir -p root/isolinux
-	doas mkdir -p root/etc
-	doas mkdir -p root/etc/rc.d
+	$AS_ROOT mkdir -p root/usr/include/sys
+	$AS_ROOT mkdir -p root/usr/share
+	$AS_ROOT mkdir -p root/usr/man
+	$AS_ROOT mkdir -p root/lib64
+	$AS_ROOT mkdir -p root/bin
+	$AS_ROOT mkdir -p root/tmp
+	$AS_ROOT mkdir -p root/run
+	$AS_ROOT mkdir -p root/var/run
+	$AS_ROOT mkdir -p root/var/log
+	$AS_ROOT mkdir -p root/var/db
+	$AS_ROOT mkdir -p root/root
+	$AS_ROOT mkdir -p root/var/mail
+	$AS_ROOT mkdir -p root/var/spool/mqueue
+	$AS_ROOT mkdir -p root/isolinux
+	$AS_ROOT mkdir -p root/etc
+	$AS_ROOT mkdir -p root/etc/rc.d
 
-	doas install -d -m755 root/etc/mail
+	$AS_ROOT install -d -m755 root/etc/mail
 
-	doas mkdir -p root/proc
-	doas mkdir -p root/sys
-	doas mkdir -p root/dev
+	$AS_ROOT mkdir -p root/proc
+	$AS_ROOT mkdir -p root/sys
+	$AS_ROOT mkdir -p root/dev
 
-	doas ln -s ../proc/mounts root/etc/mtab
+	$AS_ROOT ln -s ../proc/mounts root/etc/mtab
 
-	doas ln -s ../tmp/resolv.conf root/etc/resolv.conf
-	doas ln -s ../man root/usr/share/man
+	$AS_ROOT ln -s ../tmp/resolv.conf root/etc/resolv.conf
+	$AS_ROOT ln -s ../man root/usr/share/man
 
-	doas ln -s ./ksh root/bin/sh
-	doas ln -s ./sbin root/usr/bin
-	doas ln -s ../bin root/usr/sbin
-	doas ln -s ./bin root/sbin
+	$AS_ROOT ln -s ./ksh root/bin/sh
+	$AS_ROOT ln -s ./sbin root/usr/bin
+	$AS_ROOT ln -s ../bin root/usr/sbin
+	$AS_ROOT ln -s ./bin root/sbin
 	
-	doas ln -s ../usr/linux/sbin/agetty root/sbin/getty
+	$AS_ROOT ln -s ../usr/linux/sbin/agetty root/sbin/getty
 	
-	doas ln -s ../tmp root/var/tmp
+	$AS_ROOT ln -s ../tmp root/var/tmp
 
-	doas ln -s ./lib root/usr/lib64
-	doas ln -s ../lib root/usr/lib
-	doas ln -s ./lib64 root/lib
+	$AS_ROOT ln -s ./lib root/usr/lib64
+	$AS_ROOT ln -s ../lib root/usr/lib
+	$AS_ROOT ln -s ./lib64 root/lib
 fi
 download () {
 	name=`echo "$1" | rev | cut -d"/" -f1 | rev`
@@ -155,7 +159,7 @@ build () {
 		echo " - not installing"
 	else
 		echo " - installing"
-		doas make install -j $(nproc) $2=$SRCROOT/root $3 || exit 1
+		$AS_ROOT make install -j $(nproc) $2=$SRCROOT/root $3 || exit 1
 		touch .installed
 	fi
 	leave
@@ -165,32 +169,32 @@ LINUX_VER=`wget -O - "$SLACKWARE_ROOT/slackware64-current/kernels/VERSIONS.TXT" 
 echo " - Linux $LINUX_VER"
 
 if [ ! -f root/usr/include/sys/cdefs.h ]; then
-	doas wget https://github.com/openembedded/openembedded-core/raw/refs/heads/master/meta/recipes-core/musl/bsd-headers/sys-cdefs.h -O root/usr/include/sys/cdefs.h
+	$AS_ROOT wget https://github.com/openembedded/openembedded-core/raw/refs/heads/master/meta/recipes-core/musl/bsd-headers/sys-cdefs.h -O root/usr/include/sys/cdefs.h
 fi
 
 if [ ! -f root/usr/include/sys/queue.h ]; then
-	doas wget https://github.com/openembedded/openembedded-core/raw/refs/heads/master/meta/recipes-core/musl/bsd-headers/sys-queue.h -O root/usr/include/sys/queue.h
+	$AS_ROOT wget https://github.com/openembedded/openembedded-core/raw/refs/heads/master/meta/recipes-core/musl/bsd-headers/sys-queue.h -O root/usr/include/sys/queue.h
 fi
 
 if [ ! -f root/usr/include/sys/tree.h ]; then
-	doas wget https://github.com/openembedded/openembedded-core/raw/refs/heads/master/meta/recipes-core/musl/bsd-headers/sys-tree.h -O root/usr/include/sys/tree.h
+	$AS_ROOT wget https://github.com/openembedded/openembedded-core/raw/refs/heads/master/meta/recipes-core/musl/bsd-headers/sys-tree.h -O root/usr/include/sys/tree.h
 fi
 
 download $SLACKWARE_ROOT/slackware64-current/source/k/linux-$LINUX_VER.tar.xz linux-$LINUX_VER
 if [ ! -d root/usr/include/linux ]; then
 	enter dist/linux-$LINUX_VER
-	doas make headers_install ARCH=x86_64 INSTALL_HDR_PATH=$SRCROOT/root/usr
+	$AS_ROOT make headers_install ARCH=x86_64 INSTALL_HDR_PATH=$SRCROOT/root/usr
 	leave
 fi
 if [ ! -f root/bzImage ]; then
-	doas wget $SLACKWARE_ROOT/slackware64-current/kernels/generic.s/bzImage -O root/bzImage
+	$AS_ROOT wget $SLACKWARE_ROOT/slackware64-current/kernels/generic.s/bzImage -O root/bzImage
 fi
 
 if [ ! -f tarball/kernel-$LINUX_VER.txz ]; then
 	wget $SLACKWARE_ROOT/slackware64-current/slackware64/a/kernel-generic-$LINUX_VER-x86_64-1.txz -O tarball/kernel-$LINUX_VER.txz
 fi
 if [ ! -d root/lib/modules ]; then
-	doas tar xkvf tarball/kernel-$LINUX_VER.txz -C root/usr lib
+	$AS_ROOT tar xkvf tarball/kernel-$LINUX_VER.txz -C root/usr lib
 fi
 
 download http://musl.cc/x86_64-linux-musl-cross.tgz x86_64-linux-musl-cross
@@ -246,8 +250,8 @@ build dist/kmod-33 DESTDIR
 
 build dist/net-tools-2.10 DESTDIR
 
-doas groupadd -g 80 smmsp
-doas useradd -u 80 -s /bin/false -d /dev/null -g smmsp -c "Sendmail Daemon" smmsp
+$AS_ROOT groupadd -g 80 smmsp
+$AS_ROOT useradd -u 80 -s /bin/false -d /dev/null -g smmsp -c "Sendmail Daemon" smmsp
 
 cat > dist/sendmail-8.18.1/devtools/Site/site.config.m4 << EOF
 define(\`confCC',\`$CC --sysroot=$SRCROOT/root')
@@ -257,42 +261,42 @@ EOF
 
 build dist/sendmail-8.18.1 DESTDIR
 
-doas rm -rf $SRCROOT/root/etc/mail
-doas mkdir -p $SRCROOT/root/etc/mail
+$AS_ROOT rm -rf $SRCROOT/root/etc/mail
+$AS_ROOT mkdir -p $SRCROOT/root/etc/mail
 
 enter dist/sendmail-8.18.1
 cd cf/cf
 cp generic-linux.mc sendmail.mc
-doas sh Build sendmail.cf
+$AS_ROOT sh Build sendmail.cf
 cd ../..
-doas install -m644 cf/cf/submit.mc $SRCROOT/root/etc/mail
-doas install -m644 cf/cf/sendmail.mc $SRCROOT/root/etc/mail
-doas install -m644 cf/cf/*.cf $SRCROOT/root/etc/mail
-doas cp -R cf/* $SRCROOT/root/etc/mail
+$AS_ROOT install -m644 cf/cf/submit.mc $SRCROOT/root/etc/mail
+$AS_ROOT install -m644 cf/cf/sendmail.mc $SRCROOT/root/etc/mail
+$AS_ROOT install -m644 cf/cf/*.cf $SRCROOT/root/etc/mail
+$AS_ROOT cp -R cf/* $SRCROOT/root/etc/mail
 leave
 
-doas groupdel smmsp
-doas userdel smmsp
+$AS_ROOT groupdel smmsp
+$AS_ROOT userdel smmsp
 
 build dist/htop-3.3.0 DESTDIR "" "--disable-unicode"
 
 if [ ! -f root/sbin/popdev ]; then
 	echo " - compiling popdev"
-	doas $CC $CFLAGS $LDFLAGS -o root/sbin/popdev source/popdev.c
+	$AS_ROOT $CC $CFLAGS $LDFLAGS -o root/sbin/popdev source/popdev.c
 else
 	echo " - not compiling popdev"
 fi
 
 if [ ! -f root/etc/rcorder ]; then
 	echo " - compiling rcorder"
-	doas $CC $CFLAGS $LDFLAGS -o root/etc/rcorder source/rcorder.c
+	$AS_ROOT $CC $CFLAGS $LDFLAGS -o root/etc/rcorder source/rcorder.c
 else
 	echo " - not compiling rcorder"
 fi
 
 if [ ! -f root/sbin/irinit ]; then
 	echo " - compiling irinit"
-	doas $CC $CFLAGS $LDFLAGS -I$SRCROOT/root/usr/linux/include -L$SRCROOT/root/usr/linux/lib -o root/sbin/irinit source/irinit.c $SRCROOT/root/usr/linux/lib/libblkid.a
+	$AS_ROOT $CC $CFLAGS $LDFLAGS -I$SRCROOT/root/usr/linux/include -L$SRCROOT/root/usr/linux/lib -o root/sbin/irinit source/irinit.c $SRCROOT/root/usr/linux/lib/libblkid.a
 else
 	echo " - not compiling irinit"
 fi
@@ -301,53 +305,53 @@ echo " - copying files"
 for i in `ls -d base/*`; do
 	TO=`grep "TO: " $i | sed "s/# TO: //g"`
 	echo " - $i -> $TO"
-	doas cp $i $SRCROOT/root/$TO
+	$AS_ROOT cp $i $SRCROOT/root/$TO
 done
 
-doas chroot root makewhatis /usr/man
+$AS_ROOT chroot root makewhatis /usr/man
 
 echo " - constructing initrd.gz"
 if [ ! -f root/initrd.gz ]; then
-	doas cp root/bin/sh initrd/bin/sh
-	doas cp root/bin/echo initrd/bin/echo
-	doas cp root/bin/find initrd/bin/find
-	doas cp root/bin/cat initrd/bin/cat
-	doas cp root/bin/modprobe initrd/bin/modprobe
-	doas cp root/sbin/irinit initrd/init
-	doas cp root/sbin/popdev initrd/popdev
-	doas cp root/lib/libc.so initrd/lib/libc.so
-	doas cp root/lib/libc.so initrd/lib/ld-musl-x86_64.so.1
-	doas cp root/lib/libfts.so initrd/lib/libfts.so
-	doas cp root/lib/libfts.so initrd/lib/libfts.so.0
-	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/drivers/usb
-	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/drivers/scsi
-	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/fs
-	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/lib
-	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/arch
-	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/crypto
-	doas mkdir -p initrd/lib/modules/$LINUX_VER/kernel/block
-	doas cp -rf root/lib/modules/$LINUX_VER/modules.* initrd/lib/modules/$LINUX_VER/
-	doas cp -rf root/lib/modules/$LINUX_VER/kernel/drivers/scsi/* initrd/lib/modules/$LINUX_VER/kernel/drivers/scsi/
-	doas cp -rf root/lib/modules/$LINUX_VER/kernel/drivers/usb/* initrd/lib/modules/$LINUX_VER/kernel/drivers/usb/
-	doas cp -rf root/lib/modules/$LINUX_VER/kernel/fs/* initrd/lib/modules/$LINUX_VER/kernel/fs/
-	doas cp -rf root/lib/modules/$LINUX_VER/kernel/lib/* initrd/lib/modules/$LINUX_VER/kernel/lib/
-	doas cp -rf root/lib/modules/$LINUX_VER/kernel/arch/* initrd/lib/modules/$LINUX_VER/kernel/arch/
-	doas cp -rf root/lib/modules/$LINUX_VER/kernel/block/* initrd/lib/modules/$LINUX_VER/kernel/block/
-	doas cp -rf root/lib/modules/$LINUX_VER/kernel/crypto/* initrd/lib/modules/$LINUX_VER/kernel/crypto/
+	$AS_ROOT cp root/bin/sh initrd/bin/sh
+	$AS_ROOT cp root/bin/echo initrd/bin/echo
+	$AS_ROOT cp root/bin/find initrd/bin/find
+	$AS_ROOT cp root/bin/cat initrd/bin/cat
+	$AS_ROOT cp root/bin/modprobe initrd/bin/modprobe
+	$AS_ROOT cp root/sbin/irinit initrd/init
+	$AS_ROOT cp root/sbin/popdev initrd/popdev
+	$AS_ROOT cp root/lib/libc.so initrd/lib/libc.so
+	$AS_ROOT cp root/lib/libc.so initrd/lib/ld-musl-x86_64.so.1
+	$AS_ROOT cp root/lib/libfts.so initrd/lib/libfts.so
+	$AS_ROOT cp root/lib/libfts.so initrd/lib/libfts.so.0
+	$AS_ROOT mkdir -p initrd/lib/modules/$LINUX_VER/kernel/drivers/usb
+	$AS_ROOT mkdir -p initrd/lib/modules/$LINUX_VER/kernel/drivers/scsi
+	$AS_ROOT mkdir -p initrd/lib/modules/$LINUX_VER/kernel/fs
+	$AS_ROOT mkdir -p initrd/lib/modules/$LINUX_VER/kernel/lib
+	$AS_ROOT mkdir -p initrd/lib/modules/$LINUX_VER/kernel/arch
+	$AS_ROOT mkdir -p initrd/lib/modules/$LINUX_VER/kernel/crypto
+	$AS_ROOT mkdir -p initrd/lib/modules/$LINUX_VER/kernel/block
+	$AS_ROOT cp -rf root/lib/modules/$LINUX_VER/modules.* initrd/lib/modules/$LINUX_VER/
+	$AS_ROOT cp -rf root/lib/modules/$LINUX_VER/kernel/drivers/scsi/* initrd/lib/modules/$LINUX_VER/kernel/drivers/scsi/
+	$AS_ROOT cp -rf root/lib/modules/$LINUX_VER/kernel/drivers/usb/* initrd/lib/modules/$LINUX_VER/kernel/drivers/usb/
+	$AS_ROOT cp -rf root/lib/modules/$LINUX_VER/kernel/fs/* initrd/lib/modules/$LINUX_VER/kernel/fs/
+	$AS_ROOT cp -rf root/lib/modules/$LINUX_VER/kernel/lib/* initrd/lib/modules/$LINUX_VER/kernel/lib/
+	$AS_ROOT cp -rf root/lib/modules/$LINUX_VER/kernel/arch/* initrd/lib/modules/$LINUX_VER/kernel/arch/
+	$AS_ROOT cp -rf root/lib/modules/$LINUX_VER/kernel/block/* initrd/lib/modules/$LINUX_VER/kernel/block/
+	$AS_ROOT cp -rf root/lib/modules/$LINUX_VER/kernel/crypto/* initrd/lib/modules/$LINUX_VER/kernel/crypto/
 	cd initrd
 	find . | cpio -o -H newc > ../init.rd
 	cd ..
 	gzip -c init.rd > initrd.gz
-	doas mv initrd.gz root/initrd.gz
+	$AS_ROOT mv initrd.gz root/initrd.gz
 	rm -f init.rd
 fi
 
-doas cp /usr/lib/ISOLINUX/isolinux.bin root/isolinux/
-doas cp /usr/lib/syslinux/modules/bios/ldlinux.c32 root/isolinux/
-doas cp /usr/lib/syslinux/modules/bios/libutil.c32 root/isolinux/
-doas cp /usr/lib/syslinux/modules/bios/menu.c32 root/isolinux/
+$AS_ROOT cp /usr/lib/ISOLINUX/isolinux.bin root/isolinux/
+$AS_ROOT cp /usr/lib/syslinux/modules/bios/ldlinux.c32 root/isolinux/
+$AS_ROOT cp /usr/lib/syslinux/modules/bios/libutil.c32 root/isolinux/
+$AS_ROOT cp /usr/lib/syslinux/modules/bios/menu.c32 root/isolinux/
 
-doas sh -c 'cat > root/isolinux/isolinux.cfg' << EOF
+$AS_ROOT sh -c 'cat > root/isolinux/isolinux.cfg' << EOF
 default menu.c32
 timeout 50
 menu title Boot Menu
@@ -358,36 +362,36 @@ label linux
        append root=LABEL=BLNXINST rootfstype=iso9660 loglevel=4 installer
 EOF
 
-doas sh -c 'echo berkeley > root/etc/nodename'
-doas sh -c 'echo berkeley > root/etc/mail/local-host-names'
+$AS_ROOT sh -c 'echo berkeley > root/etc/nodename'
+$AS_ROOT sh -c 'echo berkeley > root/etc/mail/local-host-names'
 
-doas sh -c 'cat > root/etc/mail/aliases' << EOF
+$AS_ROOT sh -c 'cat > root/etc/mail/aliases' << EOF
 postmater: root
 MAILER-DAEMON: root
 
 EOF
 
-doas sh -c 'cat > root/etc/issue' << EOF
+$AS_ROOT sh -c 'cat > root/etc/issue' << EOF
 Welcome to Berkeley Linux - The Linux Distribution
            from Nishi
 System name: \n
 EOF
 
-doas chroot root /usr/sbin/groupadd -g 0 root
-doas chroot root /usr/sbin/groupadd -g 1 daemon
-doas chroot root /usr/sbin/groupadd -g 2 bin
-doas chroot root /usr/sbin/groupadd -g 80 smmsp
-doas chroot root /usr/sbin/useradd -p x -g 0 -u 0 -d /root -s /bin/sh root
-doas chroot root /usr/sbin/useradd -u 80 -s /bin/false -d /dev/null -g smmsp -c "Sendmail Daemon" smmsp
-echo "root:`mkpasswd -m sha512crypt root`:0::::::" | doas sh -c 'cat > root/etc/shadow'
-echo root:root | doas chroot root /usr/sbin/chpasswd -c SHA512
+$AS_ROOT chroot root /usr/sbin/groupadd -g 0 root
+$AS_ROOT chroot root /usr/sbin/groupadd -g 1 daemon
+$AS_ROOT chroot root /usr/sbin/groupadd -g 2 bin
+$AS_ROOT chroot root /usr/sbin/groupadd -g 80 smmsp
+$AS_ROOT chroot root /usr/sbin/useradd -p x -g 0 -u 0 -d /root -s /bin/sh root
+$AS_ROOT chroot root /usr/sbin/useradd -u 80 -s /bin/false -d /dev/null -g smmsp -c "Sendmail Daemon" smmsp
+echo "root:`mkpasswd -m sha512crypt root`:0::::::" | $AS_ROOT sh -c 'cat > root/etc/shadow'
+echo root:root | $AS_ROOT chroot root /usr/sbin/chpasswd -c SHA512
 
-doas cp /etc/services root/etc/
-doas chmod 644 root/etc/passwd
-doas chmod 644 root/etc/group
-doas chmod 600 root/etc/shadow
-doas chmod 4755 root/usr/sbin/unix_chkpwd
-doas chmod 1777 root/var/mail
-doas install -m700 -d root/var/spool/mqueue
+$AS_ROOT cp /etc/services root/etc/
+$AS_ROOT chmod 644 root/etc/passwd
+$AS_ROOT chmod 644 root/etc/group
+$AS_ROOT chmod 600 root/etc/shadow
+$AS_ROOT chmod 4755 root/usr/sbin/unix_chkpwd
+$AS_ROOT chmod 1777 root/var/mail
+$AS_ROOT install -m700 -d root/var/spool/mqueue
 
-doas xorriso -as mkisofs -V "BLNXINST" -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -b isolinux/isolinux.bin -no-emul-boot -boot-load-size 4 -o output.iso root
+$AS_ROOT xorriso -as mkisofs -V "BLNXINST" -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -b isolinux/isolinux.bin -no-emul-boot -boot-load-size 4 -o output.iso root

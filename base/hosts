@@ -1,5 +1,5 @@
 # $Id: hosts 32 2024-10-27 14:36:51Z nishi $
 # TO: /etc/hosts
 
-127.0.0.1       localhost berkeley
+127.0.0.1       localhost
 ::1		localhost ip6-localhost ip6-loopback
