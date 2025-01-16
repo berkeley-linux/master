@@ -77,7 +77,7 @@ download () {
 		echo " - not required to extract tarball/$name"
 	else
 		echo " - extracting tarball/$name"
-		tar xvf tarball/$name -C dist
+		tar xf tarball/$name -C dist
 	fi
 }
 
