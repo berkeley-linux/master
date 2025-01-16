@@ -24,7 +24,7 @@ jobs:
       with:
         submodules: recursive
     - name: Install
-      run: sudo apt-get install autoconf automake make
+      run: sudo apt-get install autoconf automake make libtool
     - name: Build
       run: ./build
       env:
